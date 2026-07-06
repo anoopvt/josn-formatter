@@ -13,6 +13,11 @@ const outputMeta = document.querySelector("#outputMeta");
 const searchRow = document.querySelector("#searchRow");
 const searchInput = document.querySelector("#searchInput");
 const searchCount = document.querySelector("#searchCount");
+const searchPrevBtn = document.querySelector("#searchPrevBtn");
+const searchNextBtn = document.querySelector("#searchNextBtn");
+const treeActions = document.querySelector("#treeActions");
+const expandAllBtn = document.querySelector("#expandAllBtn");
+const collapseAllBtn = document.querySelector("#collapseAllBtn");
 const formatBtn = document.querySelector("#formatBtn");
 const repairBtn = document.querySelector("#repairBtn");
 const clearBtn = document.querySelector("#clearBtn");
@@ -26,6 +31,8 @@ let currentMode = "pretty";
 let currentText = "";
 let lastJsonValue = null;
 const collapsedTreePaths = new Set();
+let treeMatchCount = 0;
+let treeMatchIndex = -1;
 
 const EMPTY_INPUT_MESSAGE = "Paste JSON, or upload a .json file, to check for errors.";
 const VALID_INPUT_MESSAGE = "Valid JSON. Ready to format.";
@@ -315,11 +322,6 @@ function syntaxHighlightJson(text) {
 }
 
 function renderSearch() {
-  if (currentMode === "tree") {
-    searchCount.textContent = "0 matches";
-    return;
-  }
-
   const query = searchInput.value.trim();
   if (!query) {
     output.innerHTML = syntaxHighlightJson(currentText);
@@ -346,14 +348,52 @@ function primitiveClass(value) {
   return "tree-muted";
 }
 
-function primitiveText(value) {
-  if (typeof value === "string") return `"${escapeHtml(value)}"`;
-  return escapeHtml(String(value));
+function primitiveSearchText(value) {
+  return String(value);
 }
 
-function renderTreeNode(value, key, path, depth) {
+function highlightIfNeeded(text, search, matched) {
+  const escaped = escapeHtml(text);
+  if (!matched) return escaped;
+  const regex = new RegExp(search.highlightSource, "gi");
+  return escaped.replace(regex, (match) => `<mark>${match}</mark>`);
+}
+
+function collectContainerPaths(value, path, target) {
+  if (!value || typeof value !== "object") return;
+  target.add(path);
+  const entries = Array.isArray(value) ? value.map((item, index) => [index, item]) : Object.entries(value);
+  entries.forEach(([childKey, childValue]) => collectContainerPaths(childValue, `${path}.${childKey}`, target));
+}
+
+function collectSearchMatches(value, key, path, testRegex, forceOpen) {
   const hasKey = key !== null && key !== undefined;
-  const keyHtml = hasKey ? `<span class="tree-key">"${escapeHtml(String(key))}"</span><span class="tree-muted">: </span>` : "";
+  let matched = hasKey && testRegex.test(String(key));
+
+  if (value && typeof value === "object") {
+    const entries = Array.isArray(value) ? value.map((item, index) => [index, item]) : Object.entries(value);
+    let childMatch = false;
+    entries.forEach(([childKey, childValue]) => {
+      if (collectSearchMatches(childValue, childKey, `${path}.${childKey}`, testRegex, forceOpen)) {
+        childMatch = true;
+      }
+    });
+    if (childMatch) {
+      forceOpen.add(path);
+      matched = true;
+    }
+  } else if (testRegex.test(primitiveSearchText(value))) {
+    matched = true;
+  }
+
+  return matched;
+}
+
+function renderTreeNode(value, key, path, depth, search) {
+  const hasKey = key !== null && key !== undefined;
+  const keyStr = hasKey ? String(key) : "";
+  const keyMatches = Boolean(hasKey && search && search.test.test(keyStr));
+  const keyHtml = hasKey ? `<span class="tree-key">"${highlightIfNeeded(keyStr, search, keyMatches)}"</span><span class="tree-muted">: </span>` : "";
   const margin = depth * 18;
 
   if (value && typeof value === "object") {
@@ -361,10 +401,12 @@ function renderTreeNode(value, key, path, depth) {
     const entries = isArray ? value.map((item, index) => [index, item]) : Object.entries(value);
     const openBrace = isArray ? "[" : "{";
     const closeBrace = isArray ? "]" : "}";
-    const collapsed = collapsedTreePaths.has(path);
+    const forcedOpen = Boolean(search && search.forceOpen.has(path));
+    const collapsed = collapsedTreePaths.has(path) && !forcedOpen;
     const countLabel = `${entries.length} ${entries.length === 1 ? "item" : "items"}`;
-    const toggle = `<button class="tree-toggle" type="button" data-path="${escapeHtml(path)}">${collapsed ? ">" : "v"}</button>`;
-    let html = `<div class="tree-row" style="margin-left:${margin}px">${toggle}<span>${keyHtml}<span class="tree-punctuation">${openBrace}</span>`;
+    const matchAttr = keyMatches ? ` data-match-index="${search.counter++}"` : "";
+    const toggle = `<span class="tree-toggle">${collapsed ? ">" : "v"}</span>`;
+    let html = `<div class="tree-row" data-path="${escapeHtml(path)}" role="button" tabindex="0" aria-expanded="${!collapsed}"${matchAttr} style="margin-left:${margin}px">${toggle}<span>${keyHtml}<span class="tree-punctuation">${openBrace}</span>`;
 
     if (collapsed) {
       html += `<span class="tree-muted"> ${countLabel} </span><span class="tree-punctuation">${closeBrace}</span></span></div>`;
@@ -373,39 +415,107 @@ function renderTreeNode(value, key, path, depth) {
 
     html += `</span></div>`;
     entries.forEach(([childKey, childValue]) => {
-      html += renderTreeNode(childValue, childKey, `${path}.${childKey}`, depth + 1);
+      html += renderTreeNode(childValue, childKey, `${path}.${childKey}`, depth + 1, search);
     });
     html += `<div class="tree-row" style="margin-left:${margin}px"><span class="tree-spacer"></span><span class="tree-punctuation">${closeBrace}</span></div>`;
     return html;
   }
 
-  return `<div class="tree-row" style="margin-left:${margin}px"><span class="tree-spacer"></span><span>${keyHtml}<span class="${primitiveClass(value)}">${primitiveText(value)}</span></span></div>`;
+  const valueText = primitiveSearchText(value);
+  const valueMatches = Boolean(search && search.test.test(valueText));
+  const matchAttr = (keyMatches || valueMatches) ? ` data-match-index="${search.counter++}"` : "";
+  const valueHtml = typeof value === "string"
+    ? `"${highlightIfNeeded(value, search, valueMatches)}"`
+    : highlightIfNeeded(valueText, search, valueMatches);
+
+  return `<div class="tree-row"${matchAttr} style="margin-left:${margin}px"><span class="tree-spacer"></span><span>${keyHtml}<span class="${primitiveClass(value)}">${valueHtml}</span></span></div>`;
+}
+
+function updateSearchNav() {
+  if (currentMode === "tree" && searchInput.value.trim()) {
+    searchCount.textContent = treeMatchCount ? `${treeMatchIndex + 1} of ${treeMatchCount}` : "0 matches";
+  }
+  searchPrevBtn.disabled = treeMatchCount === 0;
+  searchNextBtn.disabled = treeMatchCount === 0;
+}
+
+function focusTreeMatch() {
+  treeOutput.querySelectorAll(".current-match").forEach((row) => row.classList.remove("current-match"));
+  if (treeMatchIndex < 0) return;
+
+  const row = treeOutput.querySelector(`[data-match-index="${treeMatchIndex}"]`);
+  if (row) {
+    row.classList.add("current-match");
+    row.scrollIntoView({ block: "center" });
+  }
+}
+
+function stepTreeMatch(delta) {
+  if (treeMatchCount === 0) return;
+  treeMatchIndex = (treeMatchIndex + delta + treeMatchCount) % treeMatchCount;
+  updateSearchNav();
+  focusTreeMatch();
 }
 
 function renderTree() {
   if (!lastJsonValue) {
     treeOutput.innerHTML = '<span class="output-empty">// Format valid JSON to see the tree</span>';
+    treeMatchCount = 0;
+    treeMatchIndex = -1;
+    updateSearchNav();
     return;
   }
 
-  treeOutput.innerHTML = renderTreeNode(lastJsonValue, null, "root", 0);
+  const query = searchInput.value.trim();
+  let search = null;
+
+  if (query) {
+    const testRegex = new RegExp(escapeRegExp(query), "i");
+    const forceOpen = new Set();
+    collectSearchMatches(lastJsonValue, null, "root", testRegex, forceOpen);
+    search = { test: testRegex, highlightSource: escapeRegExp(query), forceOpen, counter: 0 };
+  }
+
+  treeOutput.innerHTML = renderTreeNode(lastJsonValue, null, "root", 0, search);
+  treeMatchCount = search ? search.counter : 0;
+
+  if (treeMatchCount === 0) {
+    treeMatchIndex = -1;
+  } else if (treeMatchIndex < 0 || treeMatchIndex >= treeMatchCount) {
+    treeMatchIndex = 0;
+  }
+
+  updateSearchNav();
+  if (query) focusTreeMatch();
+}
+
+function toggleTreePath(path) {
+  if (collapsedTreePaths.has(path)) {
+    collapsedTreePaths.delete(path);
+  } else {
+    collapsedTreePaths.add(path);
+  }
+  renderTree();
 }
 
 function updateOutput(text) {
   currentText = text;
   outputMeta.textContent = text ? `${text.length.toLocaleString()} characters` : "No output yet";
 
-  if (currentMode === "tree") {
+  const isTree = currentMode === "tree";
+  treeActions.hidden = !isTree;
+  searchPrevBtn.hidden = !isTree;
+  searchNextBtn.hidden = !isTree;
+
+  if (isTree) {
     outputPre.hidden = true;
     treeOutput.hidden = false;
-    searchRow.classList.add("hidden");
     renderTree();
     return;
   }
 
   outputPre.hidden = false;
   treeOutput.hidden = true;
-  searchRow.classList.remove("hidden");
   renderSearch();
 }
 
@@ -518,7 +628,24 @@ modeButtons.forEach((button) => {
 formatBtn.addEventListener("click", () => formatJson());
 repairBtn.addEventListener("click", () => formatJson({ repair: true }));
 validateBtn.addEventListener("click", () => validateInput());
-searchInput.addEventListener("input", renderSearch);
+searchInput.addEventListener("input", () => {
+  if (currentMode === "tree") {
+    renderTree();
+  } else {
+    renderSearch();
+  }
+});
+searchPrevBtn.addEventListener("click", () => stepTreeMatch(-1));
+searchNextBtn.addEventListener("click", () => stepTreeMatch(1));
+expandAllBtn.addEventListener("click", () => {
+  collapsedTreePaths.clear();
+  renderTree();
+});
+collapseAllBtn.addEventListener("click", () => {
+  collapsedTreePaths.clear();
+  collectContainerPaths(lastJsonValue, "root", collapsedTreePaths);
+  renderTree();
+});
 downloadBtn.addEventListener("click", downloadOutput);
 fileInput.addEventListener("change", () => loadFile(fileInput.files[0]));
 
@@ -577,16 +704,17 @@ copyBtn.addEventListener("click", async () => {
 });
 
 treeOutput.addEventListener("click", (event) => {
-  const button = event.target.closest("[data-path]");
-  if (!button) return;
+  const row = event.target.closest("[data-path]");
+  if (!row) return;
+  toggleTreePath(row.dataset.path);
+});
 
-  const path = button.dataset.path;
-  if (collapsedTreePaths.has(path)) {
-    collapsedTreePaths.delete(path);
-  } else {
-    collapsedTreePaths.add(path);
-  }
-  renderTree();
+treeOutput.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  const row = event.target.closest("[data-path]");
+  if (!row) return;
+  event.preventDefault();
+  toggleTreePath(row.dataset.path);
 });
 
 updateInputMeta();
