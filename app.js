@@ -25,8 +25,10 @@ const modeButtons = document.querySelectorAll(".mode-button");
 let currentMode = "pretty";
 let currentText = "";
 let lastJsonValue = null;
-let activeErrorInfo = null;
 const collapsedTreePaths = new Set();
+
+const EMPTY_INPUT_MESSAGE = "Paste JSON, or upload a .json file, to check for errors.";
+const VALID_INPUT_MESSAGE = "Valid JSON. Ready to format.";
 
 function setStatus(message, type = "") {
   statusText.textContent = message;
@@ -72,12 +74,10 @@ function escapeRegExp(value) {
 }
 
 function clearInputErrorMarker() {
-  activeErrorInfo = null;
   inputHighlight.innerHTML = "";
 }
 
 function renderInputErrorMarker(errorInfo) {
-  activeErrorInfo = errorInfo;
   const text = input.value;
   const position = Math.max(0, Math.min(text.length, errorInfo.position));
   const before = escapeHtml(text.slice(0, position));
@@ -410,18 +410,18 @@ function updateOutput(text) {
 }
 
 function validateInput({ focusError = true } = {}) {
-  const raw = input.value.trim();
+  const raw = input.value;
   updateInputMeta();
 
-  if (!raw) {
-    setInputValidation("Paste JSON, or upload a .json file, to check for errors.");
+  if (!raw.trim()) {
+    setInputValidation(EMPTY_INPUT_MESSAGE);
     return null;
   }
 
   try {
     const value = parseJson(raw);
     clearInputErrorMarker();
-    setInputValidation("Valid JSON. Ready to format.", "valid");
+    setInputValidation(VALID_INPUT_MESSAGE, "valid");
     return value;
   } catch (error) {
     const errorInfo = parseJsonError(error, raw);
@@ -434,14 +434,14 @@ function validateInput({ focusError = true } = {}) {
 }
 
 function formatJson({ repair = false } = {}) {
-  const raw = input.value.trim();
+  const raw = input.value;
   updateInputMeta();
 
-  if (!raw) {
+  if (!raw.trim()) {
     lastJsonValue = null;
     updateOutput("");
     setStatus("Paste JSON to get started");
-    setInputValidation("Paste JSON, or upload a .json file, to check for errors.");
+    setInputValidation(EMPTY_INPUT_MESSAGE);
     return;
   }
 
@@ -453,7 +453,7 @@ function formatJson({ repair = false } = {}) {
     collapsedTreePaths.clear();
     updateOutput(stringifyJson(value));
     setStatus(repair ? "JSON repaired and formatted" : "Valid JSON formatted", repair ? "repaired" : "valid");
-    setInputValidation(repair ? "Input repaired successfully. Review output before copying." : "Valid JSON. Ready to format.", repair ? "repaired" : "valid");
+    setInputValidation(repair ? "Input repaired successfully. Review output before copying." : VALID_INPUT_MESSAGE, repair ? "repaired" : "valid");
   } catch (error) {
     const checkedSource = repair ? repairJsonText(raw) : raw;
     const errorInfo = parseJsonError(error, checkedSource);
@@ -557,7 +557,7 @@ clearBtn.addEventListener("click", () => {
   clearInputErrorMarker();
   updateOutput("");
   updateInputMeta();
-  setInputValidation("Paste JSON, or upload a .json file, to check for errors.");
+  setInputValidation(EMPTY_INPUT_MESSAGE);
   setStatus("Cleared");
   input.focus();
 });

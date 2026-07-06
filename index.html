@@ -75,18 +75,18 @@
 
             <div class="search-row" id="searchRow">
               <div class="searchbar">
-                <input id="searchInput" type="search" placeholder="Search key, value, or text">
+                <input id="searchInput" type="search" aria-label="Search JSON output" placeholder="Search key, value, or text">
                 <span id="searchCount" aria-live="polite">0 matches</span>
               </div>
             </div>
 
-            <pre class="output-code" id="jsonOutput" tabindex="0"><code></code></pre>
+            <pre class="output-code" id="jsonOutput" tabindex="0" aria-label="Formatted JSON output"><code></code></pre>
             <div class="tree-output" id="treeOutput" hidden></div>
           </div>
         </section>
       </section>
     </main>
 
-    <script src="app.js"></script>
+    <script src="app.js" defer></script>
   </body>
 </html>
