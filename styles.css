@@ -121,7 +121,7 @@ button.primary:hover,
 
 .app-shell {
   width: min(1440px, 100%);
-  min-height: 100vh;
+  height: 100vh;
   margin: 0 auto;
   padding: 26px 32px 40px;
 }
@@ -130,7 +130,7 @@ button.primary:hover,
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   gap: 14px;
-  min-height: calc(100vh - 66px);
+  height: calc(100vh - 66px);
 }
 
 .topbar {
@@ -475,6 +475,11 @@ mark {
   background: #fde68a;
   color: #111827;
   padding: 0 2px;
+}
+
+mark.current-match {
+  background: var(--accent);
+  color: #ffffff;
 }
 
 .input-error-mark {
