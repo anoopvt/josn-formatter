@@ -1,49 +1,90 @@
 # JSON Formatter
 
-A single-page, dependency-free JSON formatter website.
+A fast, lightweight JSON formatter website built with plain HTML, CSS, and JavaScript.
 
-## Why this stack?
-
-For this project the fastest and lightest option is plain HTML, CSS, and JavaScript. It has no framework runtime, no bundler, no dependency install, and can be deployed as static files.
+It runs entirely in the browser, so pasted JSON never leaves the user's device. The app is designed as a single-page developer tool that can be deployed as static files or through Docker.
 
 ## Features
 
-- Format JSON as structured, indented output
-- Convert JSON to a single-line compact format
-- Validate JSON and show parse errors
-- Repair common issues before formatting:
+- Format JSON with readable indentation
+- Minify JSON into a single line
+- Validate JSON and show useful error messages
+- Highlight likely input errors directly inside the editor
+- Repair common JSON mistakes:
   - trailing commas
   - single-quoted strings
   - unquoted object keys
-- Search formatted output with match highlighting
+- Search formatted output with highlighted matches
+- Syntax-highlight formatted JSON
+- View JSON as a collapsible tree
+- Upload or drag and drop `.json` files
 - Copy formatted output
+- Download formatted output as `formatted.json`
+- Responsive two-panel layout
 
-## Run locally
+## Tech Stack
 
-Open `index.html` in a browser, or run a static server from this folder:
+This project intentionally avoids a frontend framework.
+
+- `index.html` for markup
+- `styles.css` for layout and visual design
+- `app.js` for formatter, validator, repair, search, tree view, upload, and download logic
+- `nginx` Docker image for production serving
+
+This keeps the site small, fast, and simple to deploy.
+
+## Project Structure
+
+```text
+.
+├── index.html
+├── styles.css
+├── app.js
+├── Dockerfile
+├── nginx.conf
+├── .dockerignore
+├── LICENSE
+└── README.md
+```
+
+## Run Locally
+
+Start a static server from the project folder:
 
 ```sh
 python3 -m http.server 3001
 ```
 
-Then visit `http://localhost:3001`.
+Open:
 
-## Deploy
+```text
+http://127.0.0.1:3001
+```
 
-Upload these files to any static host:
+You can also open `index.html` directly in a browser, but using a local server is closer to production.
 
-- `index.html`
-- `styles.css`
-- `app.js`
+## Docker
 
-Good options include Netlify, Vercel, GitHub Pages, Cloudflare Pages, or any simple web hosting provider.
+Build the image:
 
-## Deploy on Coolify
+```sh
+docker build -t json-formatter .
+```
 
-Use the included `Dockerfile`.
+Run it locally:
 
-1. Push this folder to a Git repository.
-2. In Coolify, create a new resource from that repository.
-3. Choose Dockerfile build.
-4. Set the exposed port to `80`.
-5. Deploy.
+```sh
+docker run --rm -p 8080:80 json-formatter
+```
+
+Open:
+
+```text
+http://127.0.0.1:8080
+```
+
+## Notes
+
+- The app does not send JSON to a server.
+- Validation and repair are best-effort helpers. Always review repaired output before using it in production.
+- The project has no package manager dependencies and no build step.
