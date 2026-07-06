@@ -5,51 +5,83 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="A fast, lightweight JSON formatter, validator, minifier, repair helper, and search tool.">
     <title>JSON Formatter</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
     <main class="app-shell">
       <section class="workspace" aria-labelledby="app-title">
         <header class="topbar">
-          <div>
-            <p class="eyebrow">Lightweight JSON Tool</p>
+          <div class="title-block">
+            <p class="eyebrow">Developer Tool</p>
             <h1 id="app-title">JSON Formatter</h1>
+            <p class="subtitle">Format, repair, minify, and search JSON with syntax highlighting and a tree view.</p>
           </div>
-          <div class="status" id="status" role="status" aria-live="polite">Ready</div>
+          <div class="status" id="status" role="status" aria-live="polite">
+            <span class="status-dot"></span>
+            <span id="statusText">Ready</span>
+          </div>
         </header>
 
-        <div class="toolbar" aria-label="JSON actions">
-          <div class="segmented" role="group" aria-label="Output style">
-            <button class="mode-button active" type="button" data-mode="pretty">Structured</button>
-            <button class="mode-button" type="button" data-mode="compact">Single line</button>
-          </div>
-          <button class="primary" type="button" id="formatBtn">Format JSON</button>
-          <button type="button" id="repairBtn">Repair & format</button>
-          <button type="button" id="clearBtn">Clear</button>
-          <button type="button" id="copyBtn">Copy output</button>
-        </div>
-
-        <div class="searchbar">
-          <label for="searchInput">Search JSON</label>
-          <input id="searchInput" type="search" placeholder="Key, value, or text">
-          <span id="searchCount" aria-live="polite">0 matches</span>
-        </div>
-
         <section class="editors" aria-label="JSON input and output">
-          <div class="panel">
+          <div class="panel input-panel">
             <div class="panel-header">
-              <h2>Input</h2>
-              <span>Paste JSON here</span>
+              <div class="panel-title">
+                <h2>Input</h2>
+                <span id="inputMeta">Paste JSON here</span>
+              </div>
+              <span class="file-badge" id="fileName" hidden></span>
             </div>
-            <textarea id="jsonInput" spellcheck="false" autocomplete="off"></textarea>
+
+            <div class="panel-actions" aria-label="Input actions">
+              <button class="primary" type="button" id="formatBtn">Format JSON</button>
+              <button type="button" id="repairBtn">Repair &amp; format</button>
+              <button type="button" id="validateBtn">Validate</button>
+              <span class="action-spacer"></span>
+              <label class="button-like" for="jsonFileInput">Upload file</label>
+              <input id="jsonFileInput" type="file" accept=".json,application/json">
+              <button type="button" id="clearBtn">Clear</button>
+            </div>
+
+            <div class="validation-message" id="inputValidation" role="status" aria-live="polite">Paste JSON, or upload a .json file, to check for errors.</div>
+
+            <div class="input-editor" id="inputEditor">
+              <pre class="input-highlight" id="inputHighlight" aria-hidden="true"></pre>
+              <textarea id="jsonInput" spellcheck="false" autocomplete="off"></textarea>
+              <div class="drop-overlay" id="dropOverlay">Drop to load JSON file</div>
+            </div>
           </div>
 
-          <div class="panel">
+          <div class="panel output-panel">
             <div class="panel-header">
-              <h2>Output</h2>
-              <span id="outputMeta">No output yet</span>
+              <div class="panel-title">
+                <h2>Output</h2>
+                <span id="outputMeta">No output yet</span>
+              </div>
             </div>
-            <pre id="jsonOutput" tabindex="0"><code></code></pre>
+
+            <div class="panel-actions output-actions" aria-label="Output actions">
+              <div class="segmented" role="group" aria-label="Output style">
+                <button class="mode-button active" type="button" data-mode="pretty">Structured</button>
+                <button class="mode-button" type="button" data-mode="compact">Single line</button>
+                <button class="mode-button" type="button" data-mode="tree">Tree</button>
+              </div>
+              <span class="action-spacer"></span>
+              <button type="button" id="copyBtn">Copy</button>
+              <button type="button" id="downloadBtn">Download</button>
+            </div>
+
+            <div class="search-row" id="searchRow">
+              <div class="searchbar">
+                <input id="searchInput" type="search" placeholder="Search key, value, or text">
+                <span id="searchCount" aria-live="polite">0 matches</span>
+              </div>
+            </div>
+
+            <pre class="output-code" id="jsonOutput" tabindex="0"><code></code></pre>
+            <div class="tree-output" id="treeOutput" hidden></div>
           </div>
         </section>
       </section>
