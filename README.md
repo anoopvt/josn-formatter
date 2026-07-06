@@ -83,6 +83,8 @@ Open:
 http://127.0.0.1:8080
 ```
 
+The Docker image includes a health check at `/healthz` so container platforms can wait for nginx before routing traffic.
+
 ## Notes
 
 - The app does not send JSON to a server.
